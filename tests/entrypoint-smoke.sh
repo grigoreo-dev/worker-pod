@@ -16,8 +16,11 @@ printf '%s\n' "$*" >"$TEST_HOME/sshd.args"
 EOF
 chmod +x "$TMPDIR/bin/ssh-keygen" "$TMPDIR/bin/sshd"
 
+grep -F 'SSHD=${SSHD:-/usr/sbin/sshd}' "$ENTRYPOINT" >/dev/null
+
 HOME="$TMPDIR/home" TEST_HOME="$TMPDIR/home" PATH="$TMPDIR/bin:$PATH" \
   SSH_PUBLIC_KEY='ssh-ed25519 AAAATEST worker@test' \
+  SSHD="$TMPDIR/bin/sshd" \
   SSHD_CONFIG=/test/sshd_config \
   "$ENTRYPOINT" sh -c 'printf command-ran >"$HOME/command-ran"'
 

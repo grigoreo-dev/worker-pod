@@ -2,6 +2,7 @@
 set -eu
 
 SSHD_CONFIG=${SSHD_CONFIG:-/etc/ssh/sshd_config_opencode}
+SSHD=${SSHD:-/usr/sbin/sshd}
 
 if [ -n "${SSH_PUBLIC_KEY:-}" ]; then
   mkdir -p "$HOME/.ssh"
@@ -13,7 +14,7 @@ if [ -n "${SSH_PUBLIC_KEY:-}" ]; then
     ssh-keygen -q -t ed25519 -N '' -f "$HOME/.ssh/ssh_host_ed25519_key"
   fi
 
-  sshd -f "$SSHD_CONFIG"
+  "$SSHD" -f "$SSHD_CONFIG"
 fi
 
 exec "$@"
