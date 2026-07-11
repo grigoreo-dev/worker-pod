@@ -4,7 +4,7 @@ Date: 2026-07-11
 
 ## Summary
 
-Extend the O‍penCode Docker image (`Dockerfile` + `docker-compose.yml`) with three
+Extend the O‍penCode Docker image (`Dockerfile` + `docker-compose.yml`) with four
 optional, build-time-toggleable capabilities:
 
 1. **SSH** — an inbound `sshd` (public-key only, non-root, port 2222) plus an
@@ -13,9 +13,11 @@ optional, build-time-toggleable capabilities:
    with Chromium pre-installed, plus the `playwright-cli` agent skill.
 3. **Camoufox CLI** — the `camoufox-cli` anti-detect browser tool with the
    Camoufox browser pre-installed, plus the `camoufox-cli` agent skill.
+4. **GitHub CLI** — the official `gh` command-line client, installed from
+   GitHub's apt repository and authenticated only at runtime.
 
-All three are **CLI + skill** integrations (no MCP servers). Every component is
-independently disableable via a Docker build `ARG`.
+The browser integrations use **CLI + skill** (no MCP servers). Every component
+is independently disableable via a Docker build `ARG`.
 
 ## Goals / Constraints
 
@@ -35,6 +37,7 @@ independently disableable via a Docker build `ARG`.
 ARG INSTALL_SSH=true
 ARG INSTALL_PLAYWRIGHT=true
 ARG INSTALL_CAMOUFOX=true
+ARG INSTALL_GH=true
 ```
 
 Each install block is guarded: `if [ "$INSTALL_X" = "true" ]; then ... fi`.
@@ -71,8 +74,9 @@ the entrypoint as `"$@"`.
 - **Root phase** (before `USER o‍pencode`): apt packages (openssh-server,
   openssh-client, python3, python3-pip, pipx), global npm installs
   (`@playwright/cli`, `camoufox-cli`), and system browser dependencies
-  (`playwright-cli install-deps`, camoufox apt deps). Directory creation +
-  `chown` to `o‍pencode`.
+  (`playwright-cli install-deps`, camoufox apt deps). When enabled, add GitHub's
+  official apt repository and install `gh`. Directory creation + `chown` to
+  `o‍pencode`.
 - **User phase** (after `USER o‍pencode`): browser binary downloads
   (`playwright-cli install chromium`, `camoufox-cli install`) and skill install,
   so caches land in `/home/o‍pencode` owned by `o‍pencode`.
@@ -126,11 +130,22 @@ Connect with: `ssh -p 2222 o‍pencode@<host>`.
   cache ends up owned by `o‍pencode`.
 - Skill: `npx skills add Bin-Huang/camoufox-cli` → `~/.agents/skills/camoufox-cli/`.
 
+## Component: GitHub CLI
+
+- Controlled independently by `ARG INSTALL_GH=true`.
+- Installed from GitHub's official apt repository rather than Debian's older
+  package or an architecture-specific release archive.
+- No GitHub credentials or tokens are included at build time.
+- Authenticate at runtime with `GH_TOKEN`, `GITHUB_TOKEN`, or interactively with
+  `gh auth login`.
+- `gh` configuration remains under the `o‍pencode` user's home directory.
+
 ## Environment variables (new)
 
 | Var | Purpose | Default |
 |-----|---------|---------|
 | `SSH_PUBLIC_KEY` | Authorized public key; enables sshd when set | unset (sshd off) |
+| `GH_TOKEN` | Optional runtime token consumed directly by GitHub CLI | unset |
 
 ## Error handling
 
@@ -142,8 +157,11 @@ Connect with: `ssh -p 2222 o‍pencode@<host>`.
 
 - `docker build` with all ARGs true succeeds.
 - `docker build --build-arg INSTALL_SSH=false --build-arg INSTALL_PLAYWRIGHT=false
-  --build-arg INSTALL_CAMOUFOX=false` produces a lean image equivalent to today.
+  --build-arg INSTALL_CAMOUFOX=false --build-arg INSTALL_GH=false` produces a
+  lean image equivalent to today.
 - Runtime: `playwright-cli --version`, `camoufox-cli --version` succeed.
+- Runtime: `gh --version` succeeds when `INSTALL_GH=true`; `gh` is absent when
+  `INSTALL_GH=false`.
 - Runtime with `SSH_PUBLIC_KEY` set: `ssh -p 2222 o‍pencode@host` connects.
 - `o‍pencode` lists `playwright-cli` and `camoufox-cli` skills.
 
@@ -153,3 +171,4 @@ Connect with: `ssh -p 2222 o‍pencode@<host>`.
 - No password-based SSH auth.
 - No supervisord (entrypoint handles the two processes).
 - Firefox/WebKit Playwright browsers (Chromium only) unless later requested.
+- No GitHub credentials baked into the image.
