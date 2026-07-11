@@ -44,7 +44,22 @@ RUN apt-get update && \
     fi && \
     if [ "$INSTALL_CAMOUFOX" = "true" ]; then \
       npm install -g camoufox-cli && \
-      camoufox-cli install --with-deps; \
+      camoufox-cli install --with-deps && \
+      ARCH="$(uname -m)" && \
+      if [ "$ARCH" = "x86_64" ]; then \
+        CAMOUFOX_URL="https://github.com/daijro/camoufox/releases/download/v150.0.2-beta.25/camoufox-150.0.2-alpha.26-lin.x86_64.zip" && \
+        CAMOUFOX_VERSION_JSON='{"version":"150.0.2","release":"alpha.26"}'; \
+      else \
+        CAMOUFOX_URL="https://github.com/daijro/camoufox/releases/download/v150.0.2-beta.25/camoufox-150.0.2-alpha.25-lin.arm64.zip" && \
+        CAMOUFOX_VERSION_JSON='{"version":"150.0.2","release":"alpha.25"}'; \
+      fi && \
+      apt-get install -y --no-install-recommends unzip && \
+      curl -fsSL "$CAMOUFOX_URL" -o /tmp/camoufox.zip && \
+      mkdir -p /root/.cache/camoufox && \
+      unzip -o /tmp/camoufox.zip -d /root/.cache/camoufox/ && \
+      echo "$CAMOUFOX_VERSION_JSON" > /root/.cache/camoufox/version.json && \
+      chmod -R 755 /root/.cache/camoufox/ && \
+      rm -f /tmp/camoufox.zip; \
     fi && \
     rm -rf /var/lib/apt/lists/* /root/.npm
 
@@ -86,8 +101,8 @@ RUN if [ "$INSTALL_PLAYWRIGHT" = "true" ]; then \
     if [ "$INSTALL_CAMOUFOX" = "true" ]; then \
       npx --yes skills add Bin-Huang/camoufox-cli --global --yes; \
     fi && \
-    test "$INSTALL_PLAYWRIGHT" != "true" || test -f /home/opencode/.agents/skills/playwright-cli/SKILL.md && \
-    test "$INSTALL_CAMOUFOX" != "true" || test -f /home/opencode/.agents/skills/camoufox-cli/SKILL.md
+    { test "$INSTALL_PLAYWRIGHT" != "true" || test -f /home/opencode/.agents/skills/playwright-cli/SKILL.md; } && \
+    { test "$INSTALL_CAMOUFOX" != "true" || test -f /home/opencode/.agents/skills/camoufox-cli/SKILL.md; }
 
 ENTRYPOINT ["docker-entrypoint.sh"]
 
