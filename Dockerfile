@@ -4,6 +4,7 @@ ARG OPENCODE_VERSION=latest
 ARG INSTALL_SSH=true
 ARG INSTALL_PLAYWRIGHT=true
 ARG INSTALL_CAMOUFOX=true
+ARG INSTALL_GH=true
 
 # Playwright browser binaries will be stored here (accessible by opencode user)
 ENV PLAYWRIGHT_BROWSERS_PATH=/home/opencode/.cache/ms-playwright
@@ -27,6 +28,20 @@ RUN npm i -g "opencode-ai@${OPENCODE_VERSION}" && \
 RUN if [ "$INSTALL_SSH" = "true" ]; then \
       apt-get update && \
       apt-get install -y --no-install-recommends openssh-server openssh-client && \
+      rm -rf /var/lib/apt/lists/*; \
+    fi
+
+RUN if [ "$INSTALL_GH" = "true" ]; then \
+      apt-get update && \
+      apt-get install -y --no-install-recommends ca-certificates curl && \
+      mkdir -p -m 755 /etc/apt/keyrings && \
+      curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+        -o /etc/apt/keyrings/githubcli-archive-keyring.gpg && \
+      chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg && \
+      echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+        > /etc/apt/sources.list.d/github-cli.list && \
+      apt-get update && \
+      apt-get install -y --no-install-recommends gh && \
       rm -rf /var/lib/apt/lists/*; \
     fi
 
