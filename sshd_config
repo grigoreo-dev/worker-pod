@@ -1,0 +1,12 @@
+Port 2222
+ListenAddress 0.0.0.0
+HostKey /home/opencode/.ssh/ssh_host_ed25519_key
+PidFile /home/opencode/.ssh/sshd.pid
+AuthorizedKeysFile /home/opencode/.ssh/authorized_keys
+PubkeyAuthentication yes
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitRootLogin no
+UsePAM no
+AllowUsers opencode
+Subsystem sftp internal-sftp

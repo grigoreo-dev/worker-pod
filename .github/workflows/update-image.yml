@@ -100,6 +100,9 @@ jobs:
         with:
           images: ghcr.io/pilinux/opencode
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -109,6 +112,23 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Smoke test image tooling
+        run: |
+          docker buildx build \
+            --platform "${{ matrix.platform }}" \
+            --build-arg "OPENCODE_VERSION=${{ needs.check.outputs.version }}" \
+            --load \
+            -t "opencode-smoke:${{ steps.prepare.outputs.platform_pair }}" .
+          docker run --rm --entrypoint sh \
+            "opencode-smoke:${{ steps.prepare.outputs.platform_pair }}" -lc '
+              opencode --version
+              gh --version
+              playwright-cli --version
+              command -v camoufox-cli
+              test -f "$HOME/.agents/skills/playwright-cli/SKILL.md"
+              test -f "$HOME/.agents/skills/camoufox-cli/SKILL.md"
+            '
 
       - name: Build and push by digest
         id: build
