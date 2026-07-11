@@ -1,0 +1,22 @@
+$schema: https://cubic.dev/schema/cubic-repository-config.schema.json
+
+reviews:
+  enabled: true
+  custom_instructions: |
+    This is a Docker image repository for an OpenCode agentic worker pod.
+    The primary artifact is a Dockerfile with optional build args (INSTALL_SSH,
+    INSTALL_PLAYWRIGHT, INSTALL_CAMOUFOX, INSTALL_GH — all default true).
+    Focus review on: shell script correctness and POSIX compliance,
+    Docker best practices (layer caching, image size, security), correct
+    handling of non-root runtime user (opencode), and CI workflow correctness.
+    Flag any secrets that could leak into image layers. Note that camoufox
+    uses a pinned v150 release as a workaround for a broken v152 distribution.
+
+ignore:
+  files:
+    - "*.lock"
+    - ".env*"
+    - "/tmp/**"
+
+labels:
+  skip-ai-review: skip-ai-review
