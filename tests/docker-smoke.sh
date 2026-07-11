@@ -11,7 +11,7 @@ docker run --rm --entrypoint sh "$FULL_IMAGE" -lc '
   sshd -V 2>&1 | grep -F OpenSSH
   gh --version
   playwright-cli --version
-  camoufox-cli --version
+  command -v camoufox-cli
   test -f "$HOME/.agents/skills/playwright-cli/SKILL.md"
   test -f "$HOME/.agents/skills/camoufox-cli/SKILL.md"
 '

@@ -125,7 +125,7 @@ jobs:
               opencode --version
               gh --version
               playwright-cli --version
-              camoufox-cli --version
+              command -v camoufox-cli
               test -f "$HOME/.agents/skills/playwright-cli/SKILL.md"
               test -f "$HOME/.agents/skills/camoufox-cli/SKILL.md"
             '

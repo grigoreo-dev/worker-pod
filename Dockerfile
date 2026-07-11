@@ -48,11 +48,20 @@ RUN if [ "$INSTALL_GH" = "true" ]; then \
 # Install browser CLIs and system dependencies (root phase).
 # playwright-cli install-browser --with-deps: installs OS-level libraries for Chromium
 # AND downloads the Chromium binary to $PLAYWRIGHT_BROWSERS_PATH.
-# camoufox-cli install --with-deps invokes sudo internally; we install sudo first so it
-# works when running as root during the Docker build.
+# camoufox-cli install --with-deps invokes sudo internally; sudo is only installed when
+# at least one browser tool is enabled so it does not appear in lean builds.
 # The Camoufox browser lands in /root/.cache/camoufox (userCacheDir for root).
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends sudo && \
+#
+# NOTE: camoufox-cli install --with-deps downloads the v152 release zip (data/fonts only;
+# the Firefox-based binary is absent in that release's new split distribution format).
+# We then overwrite with a direct download of the last known-good v150 release that
+# includes camoufox-bin. Both downloads are necessary: the first installs apt deps and
+# writes the JS data cache; the second supplies the actual browser binary.
+RUN if [ "$INSTALL_PLAYWRIGHT" = "true" ] || [ "$INSTALL_CAMOUFOX" = "true" ]; then \
+      apt-get update && \
+      apt-get install -y --no-install-recommends sudo && \
+      rm -rf /var/lib/apt/lists/*; \
+    fi && \
     if [ "$INSTALL_PLAYWRIGHT" = "true" ]; then \
       npm install -g @playwright/cli@latest && \
       playwright-cli install-browser --with-deps chromium; \
@@ -68,6 +77,7 @@ RUN apt-get update && \
         CAMOUFOX_URL="https://github.com/daijro/camoufox/releases/download/v150.0.2-beta.25/camoufox-150.0.2-alpha.25-lin.arm64.zip" && \
         CAMOUFOX_VERSION_JSON='{"version":"150.0.2","release":"alpha.25"}'; \
       fi && \
+      apt-get update && \
       apt-get install -y --no-install-recommends unzip && \
       curl -fsSL "$CAMOUFOX_URL" -o /tmp/camoufox.zip && \
       mkdir -p /root/.cache/camoufox && \
