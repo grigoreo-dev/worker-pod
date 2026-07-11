@@ -240,7 +240,10 @@ RUN if [ "$INSTALL_PLAYWRIGHT" = "true" ]; then \
     fi && \
     if [ "$INSTALL_CAMOUFOX" = "true" ]; then \
       npm install -g camoufox-cli && \
-      camoufox-cli install --with-deps; \
+      camoufox-cli install --with-deps && \
+      mkdir -p /home/opencode/.cache && \
+      cp -a /root/.cache/camoufox/. /home/opencode/.cache/camoufox/ && \
+      chown -R opencode:opencode /home/opencode/.cache/camoufox; \
     fi && \
     rm -rf /var/lib/apt/lists/* /root/.npm
 ```
@@ -253,7 +256,6 @@ RUN if [ "$INSTALL_PLAYWRIGHT" = "true" ]; then \
       playwright-cli install --skills; \
     fi && \
     if [ "$INSTALL_CAMOUFOX" = "true" ]; then \
-      camoufox-cli install && \
       npx --yes skills add Bin-Huang/camoufox-cli --global --yes; \
     fi && \
     test "$INSTALL_PLAYWRIGHT" != "true" || test -f /home/opencode/.agents/skills/playwright-cli/SKILL.md && \

@@ -77,9 +77,10 @@ the entrypoint as `"$@"`.
   (`playwright-cli install-deps`, camoufox apt deps). When enabled, add GitHub's
   official apt repository and install `gh`. Directory creation + `chown` to
   `o‍pencode`.
-- **User phase** (after `USER o‍pencode`): browser binary downloads
-  (`playwright-cli install chromium`, `camoufox-cli install`) and skill install,
-  so caches land in `/home/o‍pencode` owned by `o‍pencode`.
+- **User phase** (after `USER o‍pencode`): Chromium download
+  (`playwright-cli install chromium`) and skill installation. Camoufox is
+  installed once under root with `--with-deps`; its cache is then moved or
+  assigned to `o‍pencode` to avoid a second ~780 MB download.
 
 ## Component: SSH
 
@@ -125,9 +126,9 @@ Connect with: `ssh -p 2222 o‍pencode@<host>`.
 
 - Prereqs (root): `python3`, `python3-pip`, `pipx`.
 - `npm install -g camoufox-cli` (provides `camoufox-cli`).
-- System deps + browser: `camoufox-cli install --with-deps` (apt deps need
-  root; browser download ~780MB). Split so apt runs as root and the browser
-  cache ends up owned by `o‍pencode`.
+- System deps + browser: run `camoufox-cli install --with-deps` once as root,
+  then move or assign the resulting browser cache to `o‍pencode` (apt requires
+  root and the browser download is ~780 MB).
 - Skill: `npx skills add Bin-Huang/camoufox-cli` → `~/.agents/skills/camoufox-cli/`.
 
 ## Component: GitHub CLI
