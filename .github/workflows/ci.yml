@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  lint:
+    name: Static checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Entrypoint unit tests
+        run: tests/entrypoint-smoke.sh
+
+      - name: Tooling config checks
+        run: tests/tooling-config-smoke.sh
+
+      - name: Dockerfile lint
+        run: docker build --check .
+
+      - name: Compose config validation
+        run: |
+          SSH_PUBLIC_KEY='' GH_TOKEN='' TZ=UTC \
+          OPENCODE_SERVER_USERNAME='' OPENCODE_SERVER_PASSWORD='' \
+          docker compose config --quiet
+
+  lean-build:
+    name: Lean image build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build lean image (all tools disabled)
+        run: |
+          docker buildx build \
+            --build-arg INSTALL_SSH=false \
+            --build-arg INSTALL_PLAYWRIGHT=false \
+            --build-arg INSTALL_CAMOUFOX=false \
+            --build-arg INSTALL_GH=false \
+            --load \
+            -t worker-pod:lean-ci .
+
+      - name: Verify lean image has no optional tools
+        run: |
+          docker run --rm --entrypoint sh worker-pod:lean-ci -lc '
+            opencode --version
+            ! command -v sshd
+            ! command -v playwright-cli
+            ! command -v camoufox-cli
+            ! command -v gh
+          '
