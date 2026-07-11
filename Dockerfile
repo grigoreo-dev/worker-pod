@@ -2,6 +2,11 @@ FROM node:24.15.0-bookworm
 
 ARG OPENCODE_VERSION=latest
 ARG INSTALL_SSH=true
+ARG INSTALL_PLAYWRIGHT=true
+ARG INSTALL_CAMOUFOX=true
+
+# Playwright browser binaries will be stored here (accessible by opencode user)
+ENV PLAYWRIGHT_BROWSERS_PATH=/home/opencode/.cache/ms-playwright
 
 # set working directory
 WORKDIR /app
@@ -25,20 +30,64 @@ RUN if [ "$INSTALL_SSH" = "true" ]; then \
       rm -rf /var/lib/apt/lists/*; \
     fi
 
+# Install browser CLIs and system dependencies (root phase).
+# playwright-cli install-browser --with-deps: installs OS-level libraries for Chromium
+# AND downloads the Chromium binary to $PLAYWRIGHT_BROWSERS_PATH.
+# camoufox-cli install --with-deps invokes sudo internally; we install sudo first so it
+# works when running as root during the Docker build.
+# The Camoufox browser lands in /root/.cache/camoufox (userCacheDir for root).
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends sudo && \
+    if [ "$INSTALL_PLAYWRIGHT" = "true" ]; then \
+      npm install -g @playwright/cli@latest && \
+      playwright-cli install-browser --with-deps chromium; \
+    fi && \
+    if [ "$INSTALL_CAMOUFOX" = "true" ]; then \
+      npm install -g camoufox-cli && \
+      camoufox-cli install --with-deps; \
+    fi && \
+    rm -rf /var/lib/apt/lists/* /root/.npm
+
 # non-root user (recommended)
 RUN adduser --disabled-password opencode
 
-# create necessary directories and set permissions
+# create necessary directories and set permissions.
+# Move Camoufox browser from root's cache into opencode home so the non-root
+# user can read it at runtime without re-downloading.
 RUN mkdir -p /home/opencode/.local/share/opencode/ && \
   mkdir -p /home/opencode/.local/state/opencode && \
   mkdir -p /home/opencode/.config/opencode/ && \
+  mkdir -p /home/opencode/.agents/skills && \
+  if [ "$INSTALL_CAMOUFOX" = "true" ] && [ -d /root/.cache/camoufox ]; then \
+    mkdir -p /home/opencode/.cache && \
+    cp -a /root/.cache/camoufox/. /home/opencode/.cache/camoufox/; \
+  fi && \
   chown -R opencode:opencode /home/opencode
 
 COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 COPY sshd_config /etc/ssh/sshd_config_opencode
 
-# switch to non-root user
+# switch to non-root user and set home as working directory so that
+# playwright-cli install --skills writes skill files under ~/.claude/skills/
 USER opencode
+WORKDIR /home/opencode
+
+# Install browser binaries and upstream skills (user phase).
+# playwright-cli install --skills: Chromium already at $PLAYWRIGHT_BROWSERS_PATH from root
+# phase, so this skips the browser download and just installs the playwright skill to
+# .claude/skills/playwright-cli/ relative to WORKDIR (/home/opencode).
+# We then copy the full skill directory to ~/.agents/skills/ where opencode looks for skills.
+# npx skills add installs the camoufox-cli skill directly to ~/.agents/skills/camoufox-cli/.
+RUN if [ "$INSTALL_PLAYWRIGHT" = "true" ]; then \
+      playwright-cli install --skills && \
+      mkdir -p /home/opencode/.agents/skills && \
+      cp -a /home/opencode/.claude/skills/playwright-cli/. /home/opencode/.agents/skills/playwright-cli/; \
+    fi && \
+    if [ "$INSTALL_CAMOUFOX" = "true" ]; then \
+      npx --yes skills add Bin-Huang/camoufox-cli --global --yes; \
+    fi && \
+    test "$INSTALL_PLAYWRIGHT" != "true" || test -f /home/opencode/.agents/skills/playwright-cli/SKILL.md && \
+    test "$INSTALL_CAMOUFOX" != "true" || test -f /home/opencode/.agents/skills/camoufox-cli/SKILL.md
 
 ENTRYPOINT ["docker-entrypoint.sh"]
 
