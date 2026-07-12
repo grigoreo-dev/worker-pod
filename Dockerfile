@@ -88,6 +88,17 @@ RUN if [ "$INSTALL_PLAYWRIGHT" = "true" ] || [ "$INSTALL_CAMOUFOX" = "true" ]; t
     fi && \
     rm -rf /var/lib/apt/lists/* /root/.npm
 
+ARG OPENCODE_MCP_REF=main
+
+# install opencode-mcp from fork (HTTP transport support)
+# Build from source (TypeScript), pack into tarball, install globally, then clean up
+RUN git clone https://github.com/grigoreo-dev/opencode-mcp /tmp/opencode-mcp && \
+    git -C /tmp/opencode-mcp checkout "${OPENCODE_MCP_REF}" && \
+    cd /tmp/opencode-mcp && npm ci && npm run build && \
+    npm pack --pack-destination /tmp && \
+    npm install -g /tmp/opencode-mcp-*.tgz && \
+    rm -rf /tmp/opencode-mcp /tmp/opencode-mcp-*.tgz
+
 # non-root user (recommended)
 RUN adduser --disabled-password opencode
 
@@ -130,5 +141,6 @@ RUN if [ "$INSTALL_PLAYWRIGHT" = "true" ]; then \
     { test "$INSTALL_CAMOUFOX" != "true" || test -f /home/opencode/.agents/skills/camoufox-cli/SKILL.md; }
 
 ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["sleep", "infinity"]
 
 # docker buildx build --platform linux/amd64,linux/arm64 -t ghcr.io/pilinux/opencode:0.0.1 --output type=docker .
